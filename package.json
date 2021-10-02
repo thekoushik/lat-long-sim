@@ -1,0 +1,24 @@
+{
+  "name": "lat-long-sim",
+  "version": "1.0.0",
+  "description": "Web based Lat-Long Simulator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "lat",
+    "long",
+    "simulator"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thekoushik/lat-long-sim.git"
+  },
+  "author": "Koushik Seal",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1"
+  }
+}
