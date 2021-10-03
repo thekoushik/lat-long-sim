@@ -21,8 +21,12 @@ app.get('/',(req,res)=>{
 });
 
 app.get('/:project',(req,res)=>{
-	if(projects[req.params.project]){
-		res.json(projects[req.params.project]);
+	const val=projects[req.params.project];
+	if(val){
+		res.json(val);
+		projects[req.params.project] = null;
+	}else if(val === null){
+		res.json({ idle: true });
 	}else{
 		res.status(404).end();
 	}

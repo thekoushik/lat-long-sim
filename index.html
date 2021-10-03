@@ -8,11 +8,20 @@
 </head>
 <body>
     <div id="app" style="width: calc( 100vw - 30px );height: calc( 100vh - 30px );">
+        <div style="width: 100vw;height: 100vh;position: fixed;left: 0px;top: 0px;z-index: 9999;background: #000000a1;color: #fff;font-size: 2rem;text-align: center;display: flex;justify-content: center;align-items: center;font-weight: bold;" v-show="paused">
+            <div>
+                <p>Paused</p>
+                <p>Press <kbd>Esc</kbd> to Resume</p>
+            </div>
+        </div>
         <div style="position: fixed;right: 0px;top: 0px;width: 500px;z-index: 999;">
             <input type="text" readonly v-model="link" style="width: calc( 100% - 150px );text-align: center;">
             <select name="speed" v-model="speed">
-                <option value="5">5 m/s</option>
-                <option value="10">10 m/s</option>
+                <option value="5">18 kph</option>
+                <option value="10">36 kph</option>
+                <option value="14">50 kph</option>
+                <option value="20">72 kph</option>
+                <option value="28">100 kph</option>
             </select>
         </div>
         <div id="map" style="width: 100%;height: 100%;"></div>
@@ -30,7 +39,8 @@
                     marker: null,
                     target: null,
                     reached: false,
-                    speed: 5
+                    speed: 5,
+                    paused: false
                 }
             },
             computed:{
@@ -65,48 +75,82 @@
                     // libraries: ["places"]
                 });
                 this.google=await loader.load();
-                const myLatLng = {
-                    lat: 22.5957923,
-                    lng: 88.4054378
-                };
-                this.map=new this.google.maps.Map(document.getElementById("map"), {
-                    center: myLatLng,
-                    zoom: 16
-                });
-                this.marker = new this.google.maps.Marker({
-                    position: myLatLng,
-                    map: this.map,
-                    optimized: false,
-                    icon: {
-                        url: "https://www.geocodezip.net/mapIcons/SO_20170925_multiplePaths_mod.svg",
-                        anchor: new this.google.maps.Point(39, 60),
-                        size: new this.google.maps.Size(150, 150)
-                    },
-                });
-
-                this.map.addListener("click", (mapsMouseEvent) => {
-                    this.moveMarker({lat: mapsMouseEvent.latLng.lat(), lng: mapsMouseEvent.latLng.lng()});
-                });
-                this.map.addListener("contextmenu", (mapsMouseEvent) => {
-                    this.setTarget({lat: mapsMouseEvent.latLng.lat(), lng: mapsMouseEvent.latLng.lng()});
-                });
-
-                // window.addEventListener('keydown', e => {
-                //     const code = (e.keyCode ? e.keyCode : e.which);
-                //     if(code==38){//up
-                //         this.moveMarker(this.move(this.marker.getPosition(),0,0.001));
-                //     }else if(code==40){//down
-                //         this.moveMarker(this.move(this.marker.getPosition(),180,0.001));
-                //     }else if(code==37){//left
-                //         this.moveMarker(this.move(this.marker.getPosition(),270,0.001));
-                //     }else if(code==39){//right
-                //         this.moveMarker(this.move(this.marker.getPosition(),90,0.001));
-                //     }
-                //     e.stopPropagation();
-                // },true);
+                this.getBrowserLocation();
             },
             methods:{
+                initiate(lat,lng){
+                    if(this.map) return;
+                    const myLatLng = { lat, lng };
+                    this.map=new this.google.maps.Map(document.getElementById("map"), {
+                        center: myLatLng,
+                        zoom: 16
+                    });
+                    this.marker = new this.google.maps.Marker({
+                        position: myLatLng,
+                        map: this.map,
+                        optimized: false,
+                        icon: {
+                            url: "https://www.geocodezip.net/mapIcons/SO_20170925_multiplePaths_mod.svg",
+                            anchor: new this.google.maps.Point(39, 60),
+                            size: new this.google.maps.Size(150, 150)
+                        },
+                    });
+
+                    this.map.addListener("click", (mapsMouseEvent) => {
+                        this.moveMarker({lat: mapsMouseEvent.latLng.lat(), lng: mapsMouseEvent.latLng.lng()});
+                        if(this.reached && this.target){
+                            this.reached = false;
+                            this.moveTowards();
+                        }
+                    });
+                    this.map.addListener("contextmenu", (mapsMouseEvent) => {
+                        this.setTarget({lat: mapsMouseEvent.latLng.lat(), lng: mapsMouseEvent.latLng.lng()});
+                    });
+
+                    window.addEventListener('keyup', e => {
+                        const code = (e.keyCode ? e.keyCode : e.which);
+                        if(code == 27){
+                            if(this.reached) return;
+                            this.paused = !this.paused;
+                        }
+                    });
+                    // window.addEventListener('keydown', e => {
+                    //     const code = (e.keyCode ? e.keyCode : e.which);
+                    //     if(code==38){//up
+                    //         this.moveMarker(this.move(this.marker.getPosition(),0,0.001));
+                    //     }else if(code==40){//down
+                    //         this.moveMarker(this.move(this.marker.getPosition(),180,0.001));
+                    //     }else if(code==37){//left
+                    //         this.moveMarker(this.move(this.marker.getPosition(),270,0.001));
+                    //     }else if(code==39){//right
+                    //         this.moveMarker(this.move(this.marker.getPosition(),90,0.001));
+                    //     }
+                    //     e.stopPropagation();
+                    // },true);
+                },
+                getBrowserLocation(){
+                    navigator.geolocation.getCurrentPosition(pos=>{
+                        if(pos && pos.coords){
+                            this.initiate(pos.coords.latitude,pos.coords.longitude);
+                        }else{
+                            this.initiate(22.5957923,88.4054378);
+                        }
+                    }, err => {
+                        console.warn(`ERROR(${err.code}): ${err.message}`);
+                        this.initiate(22.5957923,88.4054378);
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    });
+                },
                 moveTowards(){
+                    if(this.paused){
+                        setTimeout(()=>{
+                            this.moveTowards();
+                        }, 500);
+                        return;
+                    }
                     if(this.marker && this.target){
                         if(this.reached) return;
 
@@ -186,7 +230,18 @@
                                 'Accept': 'application/json',
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({coords: { latitude: pos.lat,longitude: pos.lng, accuracy: 10, speed: Number(this.speed), heading: bearing || 0 }})
+                            body: JSON.stringify({
+                                coords: {
+                                    altitude: null,
+                                    altitudeAccuracy: null,
+                                    latitude: pos.lat,
+                                    longitude: pos.lng,
+                                    accuracy: 10,
+                                    speed: Number(this.speed),
+                                    heading: bearing || null
+                                },
+                                timestamp: Date.now()
+                            })
                         });
                     }
                 },
