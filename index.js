@@ -16,6 +16,14 @@ const localIP=(()=>{
 
 const port = 8888;
 
+app.use((req,res,next)=>{
+    res.setHeader("Access-Control-Allow-Origin", '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if(req.method=='OPTIONS') res.end();
+    else next();
+});
+
 app.get('/',(req,res)=>{
 	res.sendFile(__dirname+'/index.html');
 });
